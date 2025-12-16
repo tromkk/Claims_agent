@@ -1,0 +1,23 @@
+{
+  "POL-12345": {
+    "coverage": "auto",
+    "limit": 50000,
+    "policyholder": "John Doe",
+    "vehicle": "Toyota Camry 2023",
+    "status": "active"
+  },
+  "POL-67890": {
+    "coverage": "home",
+    "limit": 250000,
+    "policyholder": "Jane Smith",
+    "address": "123 Main St",
+    "status": "active"
+  },
+  "POL-11223": {
+    "coverage": "health",
+    "limit": 1000000,
+    "policyholder": "Bob Johnson",
+    "deductible": 5000,
+    "status": "active"
+  }
+}

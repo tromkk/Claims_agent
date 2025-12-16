@@ -1,0 +1,22 @@
+[
+  {
+    "text": "rear-end collision + new customer",
+    "fraud_rate": 0.67,
+    "risk_level": "high"
+  },
+  {
+    "text": "police report + high damage",
+    "fraud_rate": 0.78,
+    "risk_level": "high"
+  },
+  {
+    "text": "whiplash + no witnesses",
+    "fraud_rate": 0.45,
+    "risk_level": "medium"
+  },
+  {
+    "text": "minor damage + rental car claim",
+    "fraud_rate": 0.82,
+    "risk_level": "high"
+  }
+]
