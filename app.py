@@ -45,38 +45,56 @@ with st.sidebar:
     else:
         st.warning("⚠️ Create data/fraud_patterns.json")
 
-# Main app
+# MAIN APP
 
-st.header("PDF Upload")
+# Upload widget 
 uploaded_file = st.file_uploader(
     "Upload Claim/Renewal/Complaint PDF", 
     type="pdf",
     help="Supports text PDFs, forms, scanned docs"
 )
 
+# or load example 
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.markdown("<div style='text-align:center; margin: 1rem 0; font-weight: bold;'>— or —</div>", unsafe_allow_html=True)
+    if st.button("Load example claim", type="primary", use_container_width=True, help="Loads an sample of a car claim"):
+        use_example = True
+    else:
+        use_example = False
+
+extracted_text = None
+
 if uploaded_file:
-    # Save uploaded file
     with open("temp.pdf", "wb") as f:
         f.write(uploaded_file.getvalue())
-    
-    # Parse with PyMuPDF (handles forms + OCR)
-    with st.spinner("Parsing PDF (text + filled forms)..."):
-        docs = process_pdf("temp.pdf")
+    pdf_path = "temp.pdf"
+    source_label = f"Uploaded file: {uploaded_file.name}"
+elif use_example:
+    pdf_path = "sample_pdfs/example_claim_car_valid.pdf"
+    source_label = "Example pdf file"
+else:
+    pdf_path = None
+    source_label = None 
+
+# If we have a PDF path, parse them
+if pdf_path:
+    with st.spinner(f"🔍 Parsing PDF ({source_label})..."):
+        docs = process_pdf(pdf_path)
         extracted_text = "\n\n".join(d.page_content for d in docs)
-    
-    # Display extracted text
-    st.subheader("Extracted Content")
+
+    st.subheader("Extracted Content (editable)")
     st.text_area(
-        "Raw text + form fields", 
-        extracted_text, 
-        height=300,
+        "Raw text + form fields",
+        extracted_text,
+        height=250,
         label_visibility="collapsed"
     )
-    
+
     # Store in session state
     st.session_state.extracted_text = extracted_text
     st.session_state.pdf_ready = True
-    st.success("✅ PDF parsed successfully!")
+    st.success(f"✅ PDF parsed successfully from {source_label}!")
 
 
 st.header("Agent Controls ")
