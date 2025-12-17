@@ -104,11 +104,6 @@ if 'pdf_ready' in st.session_state and st.session_state.pdf_ready:
         with st.spinner("Agent reasoning..."):
             try:
                 executor = get_agent_executor()
-
-                # capture terminal ooutput
-                old_stdout = sys.stdout
-                captured_output = StringIO()
-                sys.stdout = captured_output
                 
                 # AGENTIC INPUT - Agent decides which tools to use
                 agent_input = f"""
@@ -129,14 +124,26 @@ if 'pdf_ready' in st.session_state and st.session_state.pdf_ready:
                 """
                 
                 result = executor.invoke({"input": agent_input})
-                
-                # Restore stdout and get captured logs
-                sys.stdout = old_stdout
-                agent_logs = captured_output.getvalue()
-                
-                # DISPLAY TERMINAL LOGS IN UI
-                st.markdown("### **Agent Reasoning**")
-                st.code(agent_logs, language="text", line_numbers=True)
+
+                st.markdown("### Steps")
+
+                steps = result.get("intermediate_steps", [])
+                if steps:
+                    for i, (action, observation) in enumerate(steps, start=1):
+                        with st.expander(f"Step {i}: {getattr(action, 'tool', 'Agent')}"):
+                            # Agent thought 
+                            if hasattr(action, "log") and action.log:
+                                st.info(action.log.strip())
+                            # Tool name and input
+                            if hasattr(action, "tool"):
+                                st.code(
+                                    f"Tool: {action.tool}\nInput: {action.tool_input}",
+                                    language="text",
+                                )
+                            # Tool result / observation
+                            st.success(str(observation)[:500] + ("..." if len(str(observation)) > 500 else ""))
+                else:
+                    st.write("No detailed intermediate steps available.")
                 
                 st.markdown("### **Final Decision**")
                 st.success(result["output"])

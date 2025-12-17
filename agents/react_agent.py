@@ -60,7 +60,7 @@ To call policy lookup for example:
     Action Input: POL-12345
     Use plain tool names WITHOUT backticks or quotes.
 
-CRITICAL: Approve only when you are sure the policy is valid and there are no red flags
+CRITICAL: Approve only when you are sure the policy exists, is valid and there are no red flags
 
 Think aloud step-by-step before calling tools."""
 )
