@@ -83,7 +83,7 @@ if pdf_path:
         docs = process_pdf(pdf_path)
         extracted_text = "\n\n".join(d.page_content for d in docs)
 
-    st.subheader("Extracted Content (editable)")
+    st.subheader("Extracted Content")
     st.text_area(
         "Raw text + form fields",
         extracted_text,
