@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from parsers.pdf_parser import process_pdf
 from agents.react_agent import get_agent_executor
+from langchain_community.callbacks.streamlit import StreamlitCallbackHandler
 
 # Page config
 st.set_page_config(
@@ -46,7 +47,7 @@ with col1:
             f.write(uploaded_file.getvalue())
         
         # Parse with PyMuPDF (handles forms + OCR)
-        with st.spinner("🔍 Parsing PDF (text + filled forms)..."):
+        with st.spinner("Parsing PDF (text + filled forms)..."):
             docs = process_pdf("temp.pdf")
             extracted_text = "\n\n".join(d.page_content for d in docs)
         
@@ -65,13 +66,17 @@ with col1:
         st.success("✅ PDF parsed successfully!")
 
 with col2:
-    st.header("Agent Controls 🤖")
+    st.header("Agent Controls ")
     
     if 'pdf_ready' in st.session_state and st.session_state.pdf_ready:
-        if st.button("🚀 Run Agent Analysis", type="primary", use_container_width=True):
-            with st.spinner("🧠 Agent reasoning..."):
+        if st.button("Run Agent Analysis", type="primary", use_container_width=True):
+            with st.spinner("Agent reasoning..."):
                 try:
                     executor = get_agent_executor()
+
+                    # display thinking
+                    st.markdown("### 🧠 **Live Agent Reasoning**")
+                    callback_container = st.container(height=400)
                     
                     # AGENTIC INPUT - Agent decides which tools to use
                     agent_input = f"""
@@ -91,25 +96,33 @@ with col2:
                     Only call tools when relevant data exists. Explain your reasoning.
                     """
                     
-                    result = executor.invoke({"input": agent_input})
+                    result = executor.invoke({"input": agent_input}, callbacks=[StreamlitCallbackHandler(callback_container)])
                     
-                    # TRUE AGENTIC DISPLAY - Show decision process
-                    st.markdown("### 🧠 **Agent Reasoning Trace**")
+                    # Show decision process
+                    st.markdown("### **Agent Reasoning Trace**")
+
+                    if "intermediate_steps" in result and result["intermediate_steps"]:
+                        steps = result["intermediate_steps"]
+                        for i, step in enumerate(steps):
+                            with st.expander(f"Step {i+1}: Agent Action"):
+                                # Step 0: Agent thought
+                                if len(step) > 0 and hasattr(step[0], 'content'):
+                                    st.info(f"**Thought**: {step[0].content[:500]}...")
+                                
+                                # Step 1+: Tool calls & results
+                                for j, msg in enumerate(step[1:], 1):
+                                    if hasattr(msg, 'name') and msg.name:
+                                        st.code(f"**Tool**: {msg.name}\n**Input**: {msg.args}", language="json")
+                                    elif hasattr(msg, 'content'):
+                                        st.success(f"**Tool Result**: {msg.content[:300]}...")
                     
-                    # Show step-by-step tool decisions
-                    if "intermediate_steps" in result:
-                        for i, (thought, tool_call) in enumerate(result["intermediate_steps"]):
-                            with st.expander(f"Step {i+1}: {thought[:100]}..."):
-                                st.info(f"**Thought**: {thought}")
-                                st.code(f"**Tool Called**: {tool_call}", language="python")
-                    
-                    st.markdown("### 🎯 **Final Decision**")
+                    st.markdown("### **Final Decision**")
                     st.success(result["output"])
                     
                 except Exception as e:
                     st.error(f"Agent error: {str(e)}")
                     st.info("Check console for verbose logs")
     else:
-        st.info("👆 Upload PDF first")
+        st.info(" Upload PDF first!")
 
 

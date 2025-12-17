@@ -27,10 +27,9 @@ llm = ChatOpenAI(
     api_key=os.getenv("OPENAI_KEY")
 )
 
-# Import ALL tools with @tool decorator (REQUIRED for ReAct)
 tools = [policy_lookup_tool, fraud_search_tool, amount_validator_tool]
 
-# Get ReAct prompt from LangChain Hub
+# ReAct prompt from LangChain Hub
 base_prompt = hub.pull("hwchase17/react")
 
 # CUSTOM INSURANCE PROMPT 
@@ -38,7 +37,7 @@ insurance_prompt = base_prompt.partial(
     system_message="""You are an expert insurance claims triage agent analyzing unstructured PDFs.
 
 AVAILABLE TOOLS (call ONLY when relevant data exists):
-1. policy_lookup_tool(policy_num) - Use when you see "POL-XXXXX" policy numbers
+1. policy_lookup_tool(policy_number) - Use when you see "POL-XXXXX" policy numbers
 2. fraud_search_tool(description) - Use when accident/incident described (collision, whiplash, etc.)
 3. amount_validator_tool(text) - Use when dollar amounts/claim values mentioned
 
@@ -56,20 +55,26 @@ Document mentions 'rear-end collision' → call fraud_search_tool
 Found '$15,000 damage' → call amount_validator_tool  
 Coverage valid but 67% fraud risk → APPROVE WITH MONITORING"
 
+To call policy lookup for example:
+    Action: policy_lookup_tool
+    Action Input: POL-12345
+    Use plain tool names WITHOUT backticks or quotes.
+
+CRITICAL: Approve only when you are sure the policy is valid and there are no red flags
+
 Think aloud step-by-step before calling tools."""
 )
 
 # Create ReAct agent (dynamically decides which tools to call)
 agent = create_react_agent(llm, tools, insurance_prompt)
 
-# Production executor with safeguards
 executor = AgentExecutor(
     agent=agent,
     tools=tools,
     verbose=True,  # Shows agent thoughts in console
-    max_iterations=6,  # Prevent infinite loops
-    early_stopping_method="generate",
-    handle_parsing_errors=True  # Gracefully handle LLM parsing errors
+    return_intermediate_steps=True,
+    max_iterations=6,  
+    handle_parsing_errors=True  
 )
 
 def get_agent_executor():
