@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+from io import StringIO
 from pathlib import Path
 from parsers.pdf_parser import process_pdf
 from agents.react_agent import get_agent_executor
@@ -74,9 +75,10 @@ with col2:
                 try:
                     executor = get_agent_executor()
 
-                    # display thinking
-                    st.markdown("### 🧠 **Live Agent Reasoning**")
-                    callback_container = st.container(height=400)
+                    # capture terminal ooutput
+                    old_stdout = sys.stdout
+                    captured_output = StringIO()
+                    sys.stdout = captured_output
                     
                     # AGENTIC INPUT - Agent decides which tools to use
                     agent_input = f"""
@@ -96,25 +98,15 @@ with col2:
                     Only call tools when relevant data exists. Explain your reasoning.
                     """
                     
-                    result = executor.invoke({"input": agent_input}, callbacks=[StreamlitCallbackHandler(callback_container)])
+                    result = executor.invoke({"input": agent_input})
                     
-                    # Show decision process
-                    st.markdown("### **Agent Reasoning Trace**")
-
-                    if "intermediate_steps" in result and result["intermediate_steps"]:
-                        steps = result["intermediate_steps"]
-                        for i, step in enumerate(steps):
-                            with st.expander(f"Step {i+1}: Agent Action"):
-                                # Step 0: Agent thought
-                                if len(step) > 0 and hasattr(step[0], 'content'):
-                                    st.info(f"**Thought**: {step[0].content[:500]}...")
-                                
-                                # Step 1+: Tool calls & results
-                                for j, msg in enumerate(step[1:], 1):
-                                    if hasattr(msg, 'name') and msg.name:
-                                        st.code(f"**Tool**: {msg.name}\n**Input**: {msg.args}", language="json")
-                                    elif hasattr(msg, 'content'):
-                                        st.success(f"**Tool Result**: {msg.content[:300]}...")
+                    # Restore stdout and get captured logs
+                    sys.stdout = old_stdout
+                    agent_logs = captured_output.getvalue()
+                    
+                    # DISPLAY TERMINAL LOGS IN UI
+                    st.markdown("### **Agent Reasoning**")
+                    st.code(agent_logs, language="text", line_numbers=True)
                     
                     st.markdown("### **Final Decision**")
                     st.success(result["output"])
