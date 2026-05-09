@@ -4,10 +4,10 @@ load_dotenv()
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
 
-# agents/react_agent.py
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain.agents import create_react_agent, AgentExecutor
-from langchain import hub
+from langchain.prompts import PromptTemplate
 from tools import policy_lookup_tool, fraud_search_tool, amount_validator_tool
 from pathlib import Path
 import json
@@ -21,16 +21,39 @@ except FileNotFoundError:
     POLICIES_DB = {}
     FRAUD_PATTERNS = []
 
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
     temperature=0.1,
-    api_key=os.getenv("OPENAI_KEY")
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
 tools = [policy_lookup_tool, fraud_search_tool, amount_validator_tool]
 
-# ReAct prompt from LangChain Hub
-base_prompt = hub.pull("hwchase17/react")
+# ReAct prompt
+base_prompt = PromptTemplate.from_template("""You are an expert insurance claims triage agent.
+
+{system_message}
+
+You have access to these tools:
+{tools}
+
+Use this EXACT format for every response:
+
+Question: the input question you must answer
+Thought: your reasoning about what to do next
+Action: the tool to use, must be one of [{tool_names}]
+Action Input: the input to the tool
+Observation: the result of the tool
+... (repeat Thought/Action/Action Input/Observation as needed)
+Thought: I now have enough information to make a final decision.
+Final Answer: APPROVE / DENY / FLAG FOR REVIEW / APPROVE WITH MONITORING — followed by your reasoning.
+
+CRITICAL: Always end with 'Final Answer:'. Never use 'Action: None'.
+
+Begin!
+
+Question: {input}
+Thought: {agent_scratchpad}""")
 
 # CUSTOM INSURANCE PROMPT 
 insurance_prompt = base_prompt.partial(
@@ -62,7 +85,7 @@ To call policy lookup for example:
 
 CRITICAL: Approve only when you are sure the policy exists, is valid and there are no red flags
 
-Think aloud step-by-step before calling tools."""
+"""
 )
 
 # Create ReAct agent (dynamically decides which tools to call)
@@ -74,7 +97,13 @@ executor = AgentExecutor(
     verbose=True,  # Shows agent thoughts in console
     return_intermediate_steps=True,
     max_iterations=6,  
-    handle_parsing_errors=True  
+    handle_parsing_errors=(
+        "Invalid format. You must either call a tool using:\n"
+        "Action: <tool_name>\nAction Input: <input>\n\n"
+        "OR conclude with:\n"
+        "Thought: I have enough information.\n"
+        "Final Answer: <your decision>"
+    )  
 )
 
 def get_agent_executor():

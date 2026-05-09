@@ -40,7 +40,6 @@ def policy_lookup_tool(policy_number: str) -> str:
 def policy_lookup_tool(policy_number: str) -> str:
     """Lookup policy details by policy number."""
     try:
-        # 🛡️ FIX: Clean input (remove quotes, whitespace, truncation)
         clean_policy = policy_number.strip().strip('"\'`')
         first_token = clean_policy.split()[0]
         clean_policy = first_token.replace('"', '').replace("'", "")
@@ -54,7 +53,19 @@ def policy_lookup_tool(policy_number: str) -> str:
         
         if clean_policy in policies:
             policy = policies[clean_policy]
-            return f"✅ Policy {clean_policy} FOUND: {policy['coverage']} coverage, ${policy['limit']:,} limit, {policy['policyholder']}, {policy['vehicle']}, status: {policy['status']}"
+            
+            vehicle_info = f", vehicle: {policy['vehicle']}" if 'vehicle' in policy else ""
+            deductible_info = f", deductible: ${policy.get('deductible', 'N/A'):,}" if 'deductible' in policy else ""
+            
+            return (
+                f"✅ Policy {clean_policy} FOUND: "
+                f"{policy['coverage']} coverage, "
+                f"${policy['limit']:,} limit, "
+                f"{policy['policyholder']}"
+                f"{vehicle_info}"
+                f"{deductible_info}, "
+                f"status: {policy['status']}"
+            )
         else:
             return f"❌ Policy {clean_policy} NOT FOUND (keys: {list(policies.keys())})"
             
