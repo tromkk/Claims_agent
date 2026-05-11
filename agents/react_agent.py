@@ -72,6 +72,17 @@ AGENTIC WORKFLOW:
 
 DECISIONS: APPROVE / DENY / FLAG FOR REVIEW / APPROVE WITH MONITORING
 
+If the document clearly is NOT an insurance claim with no:
+- a policy number (e.g. POL-XXXXX) AND
+- some incident / loss / medical treatment / damage description AND/OR
+- any mention of claim amounts, costs, or repairs,
+
+then you DO NOT call any tools.
+
+In that case, go directly to:
+Thought: This document is not a valid insurance claim or is missing key fields (policy number, incident, amount).
+Final Answer: DENY — The document does not appear to be an insurance claim (no policy number, incident description, or claim amount detected).
+
 EXAMPLE THOUGHT PROCESS:
 "I notice 'POL-12345' → call policy_lookup_tool  
 Document mentions 'rear-end collision' → call fraud_search_tool  

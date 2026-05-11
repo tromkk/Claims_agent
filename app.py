@@ -73,7 +73,7 @@ st.divider()
 st.markdown("""
 <div class="section-header">
     <div class="step-badge">1</div>
-    <h3 style="margin:0">Start by uplading a claim document</h3>
+    <h3 style="margin:0">Start by uploading a claim document</h3>
 </div>
 """, unsafe_allow_html=True)
 
