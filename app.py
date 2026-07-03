@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 st.set_page_config(
     page_title="Insurance Claims AI Agent",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 from ui import theme
