@@ -1,81 +1,102 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
+"""Legacy text-format ReAct agent.
 
+Kept for comparison with the tool-calling agent (enable with USE_LEGACY_REACT_AGENT=true).
+The text-based Thought/Action/Observation format is inherently fragile; the new
+default lives in agents/triage_agent.py.
+"""
 
-# agents/react_agent.py
-from langchain_openai import ChatOpenAI
-from langchain.agents import create_react_agent, AgentExecutor
-from langchain import hub
-from tools import policy_lookup_tool, fraud_search_tool, amount_validator_tool
-from pathlib import Path
-import json
+from __future__ import annotations
 
+from functools import lru_cache
 
-# Load data globally for fast access
-try:
-    POLICIES_DB = json.loads(Path("data/policies.json").read_text())
-    FRAUD_PATTERNS = json.loads(Path("data/fraud_patterns.json").read_text())
-except FileNotFoundError:
-    POLICIES_DB = {}
-    FRAUD_PATTERNS = []
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain.prompts import PromptTemplate
 
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0.1,
-    api_key=os.getenv("OPENAI_KEY")
+from agents.extraction import extract_fields
+from agents.llm import get_chat_model
+from agents.schemas import TraceStep, TriageOutcome
+from agents.triage_agent import _fallback_result
+from config import get_settings
+from tools import (
+    amount_validator_tool,
+    claims_history_tool,
+    fraud_search_tool,
+    policy_lookup_tool,
 )
 
-tools = [policy_lookup_tool, fraud_search_tool, amount_validator_tool]
+TOOLS = [policy_lookup_tool, fraud_search_tool, amount_validator_tool, claims_history_tool]
 
-# ReAct prompt from LangChain Hub
-base_prompt = hub.pull("hwchase17/react")
+PROMPT = PromptTemplate.from_template("""You are an expert insurance claims triage agent.
 
-# CUSTOM INSURANCE PROMPT 
-insurance_prompt = base_prompt.partial(
-    system_message="""You are an expert insurance claims triage agent analyzing unstructured PDFs.
+You have access to these tools:
+{tools}
 
-AVAILABLE TOOLS (call ONLY when relevant data exists):
-1. policy_lookup_tool(policy_number) - Use when you see "POL-XXXXX" policy numbers
-2. fraud_search_tool(description) - Use when accident/incident described (collision, whiplash, etc.)
-3. amount_validator_tool(text) - Use when dollar amounts/claim values mentioned
+Use this EXACT format for every response:
 
-AGENTIC WORKFLOW:
-1. SCAN document for: policy #, incident description, claim amounts
-2. REASON: "I see POL-12345 so I'll call policy_lookup_tool"
-3. CALL tools dynamically based on content
-4. SYNTHESIZE: Coverage + fraud risk + amount → final triage decision
+Question: the input question you must answer
+Thought: your reasoning about what to do next
+Action: the tool to use, must be one of [{tool_names}]
+Action Input: the input to the tool
+Observation: the result of the tool
+... (repeat Thought/Action/Action Input/Observation as needed)
+Thought: I now have enough information to make a final decision.
+Final Answer: APPROVE / DENY / FLAG FOR REVIEW / APPROVE WITH MONITORING / NEEDS INFO, followed by your reasoning.
 
-DECISIONS: APPROVE / DENY / FLAG FOR REVIEW / APPROVE WITH MONITORING
+WORKFLOW: extract the policy number (POL-XXXXX) and look it up; check the incident
+description for fraud; review claims history; validate amounts. Only call tools when
+the relevant data exists. If the document is not an insurance claim, call no tools and
+answer DENY. If the policy number is missing or cannot be verified, answer NEEDS INFO.
 
-EXAMPLE THOUGHT PROCESS:
-"I notice 'POL-12345' → call policy_lookup_tool  
-Document mentions 'rear-end collision' → call fraud_search_tool  
-Found '$15,000 damage' → call amount_validator_tool  
-Coverage valid but 67% fraud risk → APPROVE WITH MONITORING"
+CRITICAL: Always end with 'Final Answer:'. Never use 'Action: None'.
 
-To call policy lookup for example:
-    Action: policy_lookup_tool
-    Action Input: POL-12345
-    Use plain tool names WITHOUT backticks or quotes.
+Begin!
 
-CRITICAL: Approve only when you are sure the policy is valid and there are no red flags
+Question: {input}
+Thought: {agent_scratchpad}""")
 
-Think aloud step-by-step before calling tools."""
-)
 
-# Create ReAct agent (dynamically decides which tools to call)
-agent = create_react_agent(llm, tools, insurance_prompt)
+@lru_cache
+def get_agent_executor() -> AgentExecutor:
+    settings = get_settings()
+    agent = create_react_agent(get_chat_model(), TOOLS, PROMPT)
+    return AgentExecutor(
+        agent=agent,
+        tools=TOOLS,
+        verbose=False,
+        return_intermediate_steps=True,
+        max_iterations=settings.max_agent_iterations,
+        handle_parsing_errors=(
+            "Invalid format. You must either call a tool using:\n"
+            "Action: <tool_name>\nAction Input: <input>\n\n"
+            "OR conclude with:\nThought: I have enough information.\n"
+            "Final Answer: <your decision>"
+        ),
+    )
 
-executor = AgentExecutor(
-    agent=agent,
-    tools=tools,
-    verbose=True,  # Shows agent thoughts in console
-    return_intermediate_steps=True,
-    max_iterations=6,  
-    handle_parsing_errors=True  
-)
 
-def get_agent_executor():
-    return executor
+def run_legacy_triage(document_text: str, confirmed_fields: dict | None = None) -> TriageOutcome:
+    """Run the legacy agent and adapt its free-text output to the structured schema."""
+    extracted = extract_fields(document_text)
+    confirmed_block = ""
+    if confirmed_fields:
+        confirmed_block = "\nUSER-CONFIRMED FIELDS (authoritative):\n" + "\n".join(
+            f"- {k}: {v}" for k, v in confirmed_fields.items()
+        )
+    settings = get_settings()
+    result = get_agent_executor().invoke(
+        {"input": f"INSURANCE CLAIM DOCUMENT:\n{document_text[:settings.max_document_chars]}\n{confirmed_block}"}
+    )
+    trace = [
+        TraceStep(
+            thought=getattr(action, "log", ""),
+            tool=getattr(action, "tool", None),
+            tool_input={"input": str(getattr(action, "tool_input", ""))},
+            observation=str(observation),
+        )
+        for action, observation in result.get("intermediate_steps", [])
+    ]
+    return TriageOutcome(
+        result=_fallback_result(result.get("output", "")),
+        extracted=extracted,
+        trace=trace,
+    )

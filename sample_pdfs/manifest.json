@@ -1,0 +1,52 @@
+[
+  {
+    "file": "valid_auto_claim.pdf",
+    "title": "✅ Valid auto claim (clean approval)",
+    "description": "Active policy, matching name, modest amount, no red flags → expect APPROVE."
+  },
+  {
+    "file": "example_claim_car_valid.pdf",
+    "title": "✅ Original demo claim (Charlie Wilson)",
+    "description": "The original repo's sample form: active policy POL-53276, no amount stated."
+  },
+  {
+    "file": "expired_policy_home.pdf",
+    "title": "⛔ Claim on an expired policy",
+    "description": "Home policy POL-67890 expired before the incident → expect DENY."
+  },
+  {
+    "file": "suspicious_whiplash.pdf",
+    "title": "🚩 Suspicious whiplash claim (new customer)",
+    "description": "Brand-new policy, rear-end collision, whiplash, no witnesses → expect FLAG_FOR_REVIEW."
+  },
+  {
+    "file": "high_value_tesla.pdf",
+    "title": "💰 High-value claim near the policy limit",
+    "description": "$70,500 claim on a $76,889-limit policy → expect FLAG (high value + near limit)."
+  },
+  {
+    "file": "missing_policy_number.pdf",
+    "title": "❓ Missing policy number",
+    "description": "No policy number anywhere → expect NEEDS_INFO and a confirmation prompt. (Sofia Ramirez's real policy is POL-88472: find it in the Database Explorer.)"
+  },
+  {
+    "file": "scanned_low_quality.pdf",
+    "title": "🔎 Garbled scan (OCR-quality text)",
+    "description": "Policy number mangled by OCR (P0L-S3276) → expect a fuzzy-match confirmation prompt suggesting POL-53276 (Charlie Wilson)."
+  },
+  {
+    "file": "repeat_claimant.pdf",
+    "title": "🚩 Repeat claimant (claim velocity)",
+    "description": "4th claim in six months on POL-31415, minor damage + rental car pattern → expect FLAG."
+  },
+  {
+    "file": "name_mismatch.pdf",
+    "title": "🚩 Claimant is not the policyholder",
+    "description": "Claim filed by 'Tom Brown' on Alice Brown's home policy POL-55295 → expect FLAG."
+  },
+  {
+    "file": "not_a_claim.pdf",
+    "title": "⛔ Not an insurance claim",
+    "description": "A bakery newsletter: the agent should call no tools and DENY."
+  }
+]

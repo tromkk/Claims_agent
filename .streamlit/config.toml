@@ -1,2 +1,42 @@
-[server]
-maxUploadSize = 250
+# Dark editorial theme built from notes/colour-swatch.md:
+#   #0B0B0B ink · #2E2E2E charcoal · #E6E8EB mist · #1F3A5F navy
+#   #B6BBE8 periwinkle · #8C1D18 oxblood
+
+[theme]
+base = "dark"
+primaryColor = "#B6BBE8"
+backgroundColor = "#0B0B0B"
+secondaryBackgroundColor = "#232326"
+textColor = "#E6E8EB"
+linkColor = "#B6BBE8"
+linkUnderline = false
+borderColor = "#35363A"
+showWidgetBorder = true
+baseRadius = "10px"
+buttonRadius = "8px"
+
+font = "Inter, 'Source Sans Pro', sans-serif"
+headingFont = "'Space Grotesk', Inter, sans-serif"
+headingFontWeights = [700, 700, 600, 600]
+
+codeBackgroundColor = "#161618"
+codeTextColor = "#B6BBE8"
+dataframeBorderColor = "#2E2E2E"
+dataframeHeaderBackgroundColor = "#161618"
+
+# Semantic palette re-tuned to sit with the swatch on a dark background
+# (used by st.error/st.warning/st.success/st.info, badges, etc.)
+redColor = "#C4524B"
+orangeColor = "#C97B3D"
+yellowColor = "#D9A93F"
+greenColor = "#4E9F6E"
+blueColor = "#8B93D6" 
+violetColor = "#B6BBE8"
+grayColor = "#8A8F98"
+
+[theme.sidebar]
+backgroundColor = "#151517"
+secondaryBackgroundColor = "#232326"
+
+[browser]
+gatherUsageStats = false
