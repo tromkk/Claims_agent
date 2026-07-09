@@ -98,3 +98,44 @@ policy numbers and names to build your own test documents.
 
 ![The Database Explorer showing policy, policyholder, claim, and fraud-pattern counts over a policies table](imgs/database-explorer.png)
 
+### Try it yourself
+
+The sample gallery on the Triage page ships the interesting paths:
+
+| Scenario | What it demonstrates | Expected outcome |
+|---|---|---|
+| Valid auto claim | Clean end-to-end run | APPROVE |
+| Expired policy | Coverage-in-force check | DENY |
+| Suspicious whiplash | Fraud patterns + brand-new policy | FLAG_FOR_REVIEW |
+| High-value Tesla | Amount vs limit and threshold checks | FLAG_FOR_REVIEW |
+| Missing policy number | `NEEDS_INFO`, then you fill the gap | re-run, then decision |
+| Garbled scan (`P0L-S3276`) | OCR repair + fuzzy "did you mean?" | confirm, then APPROVE |
+| Repeat claimant | Claim-velocity check from history | FLAG_FOR_REVIEW |
+| Name mismatch | Claimant vs policyholder check | FLAG_FOR_REVIEW |
+| Bakery newsletter | Non-claim rejection, zero tool calls | DENY |
+
+### Running locally
+
+```bash
+pip install -r requirements.txt
+export GROQ_API_KEY=...          # connect your key
+streamlit run app.py
+```
+
+The database is created and seeded automatically on first launch. For the OCR fallback on
+scanned PDFs, install `tesseract-ocr` and `poppler-utils` (already in `packages.txt` for
+Streamlit Cloud).
+
+### Repo layout
+
+```
+app.py        entry point: navigation, sidebar, DB bootstrap
+config.py     thresholds, models, URLs (pydantic-settings, env)
+agents/       triage_agent (tool-calling loop), extraction, schemas, llm (retry/fallback)
+tools/        policy_lookup, fraud_search, amount_validator, claims_history
+db/           SQLAlchemy models, session, seed, run repository
+parsers/      PDF parsing with OCR fallback
+ui/           triage / claims_queue / db_explorer pages + components
+imgs/         screenshots used in this README
+sample_pdfs/  demo claim documents for the sample gallery
+```
