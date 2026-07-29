@@ -179,6 +179,14 @@ code, pre, kbd {{ font-family: 'JetBrains Mono', monospace; }}
 .stat-tile .st-label {{
   color: {MUTED}; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
 }}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+/* Force dark text so the label keeps a legible contrast ratio instead of near-white-on-light-blue. */
+[data-testid="stBaseButton-primary"],
+[data-testid="stBaseButton-primary"]:hover,
+[data-testid="stBaseButton-primary"]:active,
+[data-testid="stBaseButton-primary"]:focus,
+[data-testid="stBaseButton-primary"] p {{ color: {INK} !important; }}
 </style>
 """
 

@@ -76,6 +76,9 @@ class TriageRun(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    # Browser-session UUID; on shared deployments runs are only shown to the
+    # session that created them.
+    session_id: Mapped[str | None] = mapped_column(String(40), index=True)
     document_name: Mapped[str] = mapped_column(String(200))
     extracted_fields: Mapped[dict] = mapped_column(JSON, default=dict)
     user_confirmed_fields: Mapped[dict] = mapped_column(JSON, default=dict)

@@ -1,6 +1,7 @@
 """App entry point: navigation, sidebar status panel, and one-time DB seeding."""
 
 import logging
+import uuid
 
 import streamlit as st
 
@@ -12,7 +13,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from ui import theme
+# The database is shared by all visitors of a deployment; triage runs are
+# scoped to this per-browser-session ID so visitors only see their own.
+if "viewer_id" not in st.session_state:
+    st.session_state.viewer_id = uuid.uuid4().hex
+
+from ui import theme  # noqa: E402 - after page config
 
 theme.inject_css()
 
@@ -48,7 +54,11 @@ def _sidebar() -> None:
         )
 
         with get_session() as session:
-            run_count = session.scalar(select(func.count()).select_from(TriageRun))
+            run_count = session.scalar(
+                select(func.count())
+                .select_from(TriageRun)
+                .where(TriageRun.session_id == st.session_state.viewer_id)
+            )
         stat_tile("Triage runs", run_count)
 
         if settings.groq_api_key or settings.openai_api_key:
@@ -63,9 +73,10 @@ _sidebar()
 
 from ui import claims_queue, db_explorer, triage  # noqa: E402 - after page config
 
+# The three views are distinct modes, surfaced as sidebar navigation pages.
 navigation = st.navigation(
     {
-        "Views": [
+        "Tabs": [
             st.Page(triage.render, title="Triage", url_path="triage", default=True),
             st.Page(claims_queue.render, title="Claims Queue", url_path="queue"),
             st.Page(db_explorer.render, title="Database Explorer", url_path="database"),

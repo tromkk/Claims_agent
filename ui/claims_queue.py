@@ -13,13 +13,14 @@ from ui.components import chips, decision_card, field_label, page_header, render
 def render() -> None:
     page_header(
         "Claims Queue",
-        "An overview of every claim evaluation you have run. Select a run by its number "
-        "below the table to see its extracted fields and the agent's full reasoning trail.",
+        "An overview of every claim evaluation you have run in this browser session. "
+        "Select a run by its number below the table to see its extracted fields and "
+        "the agent's full reasoning trail.",
     )
 
-    runs = recent_runs()
+    runs = recent_runs(session_id=st.session_state.viewer_id)
     if not runs:
-        st.info("No triage runs yet. Analyse a document on the Triage page first.")
+        st.info("No triage runs in this session yet. Analyse a document on the Triage page first.")
         return
 
     decisions = st.segmented_control(
@@ -61,7 +62,7 @@ def render() -> None:
         format_func=lambda i: f"Run #{i}",
         label_visibility="collapsed",
     )
-    run = get_run(selected)
+    run = get_run(selected, session_id=st.session_state.viewer_id)
     if run is None:
         return
 

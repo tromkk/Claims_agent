@@ -58,9 +58,23 @@ def init_db() -> None:
     Base.metadata.create_all(get_engine())
 
 
+def _apply_additive_migrations() -> None:
+    """Add columns introduced after an existing database file was created;
+    create_all() only creates missing tables, never missing columns."""
+    from sqlalchemy import inspect, text
+
+    engine = get_engine()
+    columns = {c["name"] for c in inspect(engine).get_columns("triage_runs")}
+    if "session_id" not in columns:
+        logger.info("Adding triage_runs.session_id column to existing database")
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE triage_runs ADD COLUMN session_id VARCHAR(40)"))
+
+
 def ensure_seeded() -> None:
     """Create tables and seed demo data if the database is empty. Idempotent."""
     init_db()
+    _apply_additive_migrations()
     with get_session() as session:
         if session.execute(select(Policy).limit(1)).first() is None:
             from db.seed import seed

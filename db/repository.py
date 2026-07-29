@@ -12,10 +12,14 @@ from db.session import get_session
 
 
 def save_triage_run(
-    document_name: str, outcome: TriageOutcome, confirmed_fields: dict | None
+    document_name: str,
+    outcome: TriageOutcome,
+    confirmed_fields: dict | None,
+    session_id: str | None = None,
 ) -> int:
     with get_session() as session:
         run = TriageRun(
+            session_id=session_id,
             document_name=document_name,
             extracted_fields=outcome.extracted.as_display_dict(),
             user_confirmed_fields=confirmed_fields or {},
@@ -40,15 +44,19 @@ def apply_override(run_id: int, decision: str, note: str) -> None:
         run.overridden_at = datetime.utcnow()
 
 
-def recent_runs(limit: int = 200) -> list[TriageRun]:
+def recent_runs(session_id: str | None = None, limit: int = 200) -> list[TriageRun]:
+    """Latest runs, newest first. With a session_id, only that session's runs."""
     with get_session() as session:
-        return list(
-            session.execute(
-                select(TriageRun).order_by(TriageRun.created_at.desc()).limit(limit)
-            ).scalars()
-        )
+        stmt = select(TriageRun).order_by(TriageRun.created_at.desc()).limit(limit)
+        if session_id is not None:
+            stmt = stmt.where(TriageRun.session_id == session_id)
+        return list(session.execute(stmt).scalars())
 
 
-def get_run(run_id: int) -> TriageRun | None:
+def get_run(run_id: int, session_id: str | None = None) -> TriageRun | None:
+    """Fetch one run; with a session_id, hide runs belonging to other sessions."""
     with get_session() as session:
-        return session.get(TriageRun, run_id)
+        run = session.get(TriageRun, run_id)
+        if run is not None and session_id is not None and run.session_id != session_id:
+            return None
+        return run

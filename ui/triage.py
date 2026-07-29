@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import tempfile
 from pathlib import Path
@@ -27,8 +28,33 @@ from ui.components import (
 
 SAMPLES_DIR = Path("sample_pdfs")
 
+# How many pages we rasterize for the visual preview (bounds memory/render time).
+PREVIEW_MAX_PAGES = 10
+
 
 # ── Session helpers ────────────────────────────────────────────────────────────
+
+
+@st.cache_data(show_spinner=False)
+def _render_pdf_pages(pdf_bytes: bytes, max_pages: int = PREVIEW_MAX_PAGES) -> list[bytes]:
+    """Rasterize the first pages of a PDF to PNG bytes.
+
+    Uses pypdfium2, which renders without any system binaries (no poppler), so the
+    preview works even where the OCR stack is unavailable. Cached on the raw bytes
+    so the pages are only rendered once per document.
+    """
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(pdf_bytes)
+    try:
+        images: list[bytes] = []
+        for i in range(min(len(pdf), max_pages)):
+            buf = io.BytesIO()
+            pdf[i].render(scale=2).to_pil().save(buf, format="PNG")
+            images.append(buf.getvalue())
+        return images
+    finally:
+        pdf.close()
 
 
 def _reset_run_state() -> None:
@@ -41,6 +67,11 @@ def _load_document(doc_id: str, name: str, path: str) -> None:
         return
     with st.spinner(f"Parsing {name}…"):
         parsed = process_pdf(path)
+    try:
+        # Kept for the visual preview; read now because uploads delete the temp file.
+        pdf_bytes = Path(path).read_bytes()
+    except OSError:
+        pdf_bytes = None
     st.session_state.doc_id = doc_id
     st.session_state.doc = {
         "name": name,
@@ -48,6 +79,7 @@ def _load_document(doc_id: str, name: str, path: str) -> None:
         "used_ocr": parsed.used_ocr,
         "num_pages": parsed.num_pages,
         "error": parsed.error,
+        "pdf_bytes": pdf_bytes,
     }
     _reset_run_state()
 
@@ -88,7 +120,9 @@ def _execute_run() -> None:
         expanded=False,
     )
     st.session_state.outcome = outcome
-    st.session_state.run_id = save_triage_run(doc["name"], outcome, confirmed)
+    st.session_state.run_id = save_triage_run(
+        doc["name"], outcome, confirmed, session_id=st.session_state.viewer_id
+    )
 
 
 def _confirm_and_rerun(updates: dict[str, str]) -> None:
@@ -126,7 +160,7 @@ def _document_section() -> None:
                 for p in sorted(SAMPLES_DIR.glob("*.pdf"))
             ]
         if not samples:
-            st.info("No sample documents found. Run `python scripts/generate_sample_pdfs.py`.")
+            st.info("No sample documents found. Add PDFs to the `sample_pdfs/` folder.")
         else:
             by_title = {s["title"]: s for s in samples}
             picked = st.pills(
@@ -156,6 +190,19 @@ def _document_section() -> None:
     if doc["used_ocr"]:
         badges.append(("scanned: OCR used, extraction confidence lowered", "warn"))
     chips(badges)
+    pdf_bytes = doc.get("pdf_bytes")
+    if pdf_bytes:
+        with st.expander("Visual preview", expanded=False):
+            try:
+                pages = _render_pdf_pages(pdf_bytes)
+            except Exception as exc:  # noqa: BLE001 - preview must never break the page
+                pages = []
+                st.caption(f"Could not render a visual preview: {exc}")
+            for i, png in enumerate(pages, start=1):
+                st.image(png, caption=f"Page {i}", width="stretch")
+            if pages and doc["num_pages"] > len(pages):
+                st.caption(f"Showing the first {len(pages)} of {doc['num_pages']} pages.")
+
     with st.expander("Preview / edit extracted text", expanded=False):
         edited = st.text_area(
             "Extracted text (editable)", doc["text"], height=220, label_visibility="collapsed"

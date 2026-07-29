@@ -17,8 +17,8 @@ class LLMConfigError(RuntimeError):
 
 
 NO_KEY_MESSAGE = (
-    "No LLM API key configured. Set `GROQ_API_KEY` (free at console.groq.com) "
-    "or `OPENAI_API_KEY` as an environment variable or Streamlit secret."
+    "No LLM API key configured. Copy `.env.example` to `.env` and set "
+    "`GROQ_API_KEY` (free at console.groq.com) or `OPENAI_API_KEY`."
 )
 
 

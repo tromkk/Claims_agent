@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     # Document parsing
     ocr_min_chars: int = 100
+    ocr_image_text_threshold: int = 500
     max_document_chars: int = 6000
 
 
