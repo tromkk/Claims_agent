@@ -15,7 +15,7 @@ SQLAlchemy>=2.0
 
 # Document parsing (OCR fallback needs tesseract-ocr + poppler-utils, see packages.txt)
 pypdf==5.0.0
-pypdfium2=5.2.0
+pypdfium2==5.2.0
 pdf2image==1.17.0
 pytesseract>=0.3.10
 pillow>=10.0
