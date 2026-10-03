@@ -1,0 +1,5 @@
+# Extra deps for the eval analysis notebook (not needed to run the agent).
+# Install into the same environment:  pip install -r eval/requirements-eval.txt
+pandas>=2.0
+matplotlib>=3.7
+jupyter>=1.0
